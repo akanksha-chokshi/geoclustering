@@ -11,6 +11,7 @@ from shapely.geometry import Polygon, MultiPolygon
 from streamlit_folium import folium_static
 import zipfile
 
+# Function to extract centroid
 def extract_centroid(geometry):
     if isinstance(geometry, MultiPolygon):
         centroid = geometry.centroid
@@ -21,6 +22,7 @@ def extract_centroid(geometry):
     else:
         return None
 
+# Function to save clusters to a zip file
 def save_clusters_to_zip(gdf, output_dir):
     zip_filename = "clusters_geojson.zip"
     with zipfile.ZipFile(zip_filename, 'w') as zipf:
@@ -31,6 +33,7 @@ def save_clusters_to_zip(gdf, output_dir):
             zipf.write(output_file, os.path.basename(output_file))
     return zip_filename
 
+# Initialize Streamlit app
 st.title("GeoJSON Clustering App")
 
 # Initialize session state keys
@@ -62,6 +65,7 @@ if uploaded_file:
     if st.button("Analyse Best Number of Clusters"):
         silhouette_scores = []
         random_state = 0
+        np.random.seed(random_state)  # Set the seed for NumPy random generator
 
         for k in range(start_clusters, end_clusters + 1):
             kmeans = KMeans(n_clusters=k, random_state=random_state)
@@ -97,6 +101,7 @@ if st.session_state['optimal_clusters'] is not None:
         coords = st.session_state['coords']
         gdf = st.session_state['gdf']
         random_state = 0
+        np.random.seed(random_state)  # Set the seed for NumPy random generator
         
         kmeans = KMeans(n_clusters=num_clusters, random_state=random_state).fit(coords)
         cluster_labels = kmeans.labels_
