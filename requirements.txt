@@ -1,7 +1,7 @@
-streamlit==1.21.0
-folium==0.16.0
-geopandas==0.10.2
-matplotlib==3.5.1
-scikit-learn==1.0.2
-shapely==2.0.1
-streamlit-folium==0.13.0
+streamlit
+folium
+geopandas
+matplotlib
+scikit-learn
+shapely
+streamlit-folium
