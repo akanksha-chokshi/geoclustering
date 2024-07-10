@@ -1,6 +1,5 @@
-streamlit
+streamlit==1.21.0
 folium==0.16.0
-numpy
 geopandas==0.10.2
 matplotlib==3.5.1
 scikit-learn==1.0.2

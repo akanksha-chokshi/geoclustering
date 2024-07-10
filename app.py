@@ -2,7 +2,6 @@ import streamlit as st
 import os
 import folium
 import random
-import numpy as np
 import geopandas as gpd
 import matplotlib.pyplot as plt
 from sklearn.metrics import silhouette_score
@@ -65,7 +64,6 @@ if uploaded_file:
     if st.button("Analyse Best Number of Clusters"):
         silhouette_scores = []
         random_state = 0
-        np.random.seed(random_state)  # Set the seed for NumPy random generator
 
         for k in range(start_clusters, end_clusters + 1):
             kmeans = KMeans(n_clusters=k, random_state=random_state)
@@ -101,7 +99,6 @@ if st.session_state['optimal_clusters'] is not None:
         coords = st.session_state['coords']
         gdf = st.session_state['gdf']
         random_state = 0
-        np.random.seed(random_state)  # Set the seed for NumPy random generator
         
         kmeans = KMeans(n_clusters=num_clusters, random_state=random_state).fit(coords)
         cluster_labels = kmeans.labels_
