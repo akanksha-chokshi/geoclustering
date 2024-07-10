@@ -56,14 +56,15 @@ if uploaded_file:
     gdf['centroid'] = gdf['geometry'].apply(extract_centroid)
     coords = gdf['centroid'].apply(lambda x: [x.x, x.y]).tolist()
 
-    start_clusters = st.number_input("Minimum Number of Clusters to Consider", min_value=2, max_value=50, value=10, step=1)
+    start_clusters = st.number_input("Minimum Number of Clusters to Consider", min_value=2, max_value=50, value=2, step=1)
     end_clusters = st.number_input("Maximum Number of Clusters to Consider", min_value=start_clusters, max_value=50, value=50, step=1)
 
     if st.button("Analyse Best Number of Clusters"):
         silhouette_scores = []
+        random_state = 0
 
         for k in range(start_clusters, end_clusters + 1):
-            kmeans = KMeans(n_clusters=k, random_state=0)
+            kmeans = KMeans(n_clusters=k, random_state=random_state)
             kmeans.fit(coords)
             silhouette_avg = silhouette_score(coords, kmeans.labels_)
             silhouette_scores.append(silhouette_avg)
@@ -95,8 +96,9 @@ if st.session_state['optimal_clusters'] is not None:
     if st.button("Perform Clustering"):
         coords = st.session_state['coords']
         gdf = st.session_state['gdf']
+        random_state = 0
         
-        kmeans = KMeans(n_clusters=num_clusters, random_state=0).fit(coords)
+        kmeans = KMeans(n_clusters=num_clusters, random_state=random_state).fit(coords)
         cluster_labels = kmeans.labels_
         gdf['cluster'] = cluster_labels
 
@@ -140,7 +142,7 @@ if st.session_state['clustering_done']:
     gdf.to_csv(csv_file, index=False)
 
     with open(csv_file, "rb") as f:
-        st.download_button("Download Clustered Results as a CSV", f, file_name="clustered_points.csv")
+        st.download_button("Download CSV", f, file_name="clustered_points.csv")
 
     with open(zip_file, "rb") as f:
-        st.download_button("Download Folder Containing All Cluster GeoJSONs", f, file_name="clusters_geojson.zip")
+        st.download_button("Download All Cluster GeoJSONs as ZIP", f, file_name="clusters_geojson.zip")
