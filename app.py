@@ -39,7 +39,7 @@ def save_clusters_to_zip(gdf, output_dir, max_size=1*1024*1024):
 
             tolerance = 0.001
             # Check file size and adjust if necessary
-            while os.path.getsize(output_file) > max_size:
+            if os.path.getsize(output_file) > max_size:
                 tolerance *= 2
                 simplified_gdf = simplify_geometries(cluster_gdf, tolerance)
                 simplified_gdf.drop(columns=['centroid', 'cluster']).to_file(output_file, driver='GeoJSON')
@@ -162,4 +162,4 @@ if st.session_state['clustering_done']:
         st.download_button("Download Clustered Results as CSV", f, file_name="clustered_points.csv")
 
     with open(zip_file, "rb") as f:
-        st.download_button("Download All Cluster GeoJSONs as ZIP", f, file_name="clusters_geojson.zip")
+        st.download_button("Download Folder with all Cluster GeoJSONs", f, file_name="clusters_geojson.zip")
