@@ -5,10 +5,11 @@ import random
 import geopandas as gpd
 import matplotlib.pyplot as plt
 from sklearn.metrics import silhouette_score
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, AgglomerativeClustering
 from shapely.geometry import Polygon, MultiPolygon
 from streamlit_folium import folium_static
 import zipfile
+from shapely.geometry import shape
 
 # Function to extract centroid
 def extract_centroid(geometry):
@@ -21,14 +22,28 @@ def extract_centroid(geometry):
     else:
         return None
 
-# Function to save clusters to a zip file
-def save_clusters_to_zip(gdf, output_dir):
+# Function to simplify geometries
+def simplify_geometries(gdf, tolerance=0.001):
+    gdf['geometry'] = gdf['geometry'].simplify(tolerance, preserve_topology=True)
+    return gdf
+
+# Function to save clusters to a zip file and ensure each file is less than 1 MB
+def save_clusters_to_zip(gdf, output_dir, max_size=1*1024*1024):
     zip_filename = "clusters_geojson.zip"
     with zipfile.ZipFile(zip_filename, 'w') as zipf:
         for cluster_id in gdf['cluster'].unique():
             cluster_gdf = gdf[gdf['cluster'] == cluster_id]
+            simplified_gdf = simplify_geometries(cluster_gdf)
             output_file = os.path.join(output_dir, f'cluster_{cluster_id}.geojson')
-            cluster_gdf.drop(columns=['centroid', 'cluster']).to_file(output_file, driver='GeoJSON')
+            simplified_gdf.drop(columns=['centroid', 'cluster']).to_file(output_file, driver='GeoJSON')
+
+            tolerance = 0.001
+            # Check file size and adjust if necessary
+            while os.path.getsize(output_file) > max_size:
+                tolerance *= 2
+                simplified_gdf = simplify_geometries(cluster_gdf, tolerance)
+                simplified_gdf.drop(columns=['centroid', 'cluster']).to_file(output_file, driver='GeoJSON')
+            
             zipf.write(output_file, os.path.basename(output_file))
     return zip_filename
 
@@ -66,9 +81,9 @@ if uploaded_file:
         random_state = 0
 
         for k in range(start_clusters, end_clusters + 1):
-            kmeans = KMeans(n_clusters=k, random_state=random_state)
-            kmeans.fit(coords)
-            silhouette_avg = silhouette_score(coords, kmeans.labels_)
+            agg = AgglomerativeClustering(n_clusters=k)
+            agg.fit(coords)
+            silhouette_avg = silhouette_score(coords, agg.labels_)
             silhouette_scores.append(silhouette_avg)
 
         # Plot silhouette scores
@@ -99,9 +114,9 @@ if st.session_state['optimal_clusters'] is not None:
         coords = st.session_state['coords']
         gdf = st.session_state['gdf']
         random_state = 0
-        
-        kmeans = KMeans(n_clusters=num_clusters, random_state=random_state).fit(coords)
-        cluster_labels = kmeans.labels_
+
+        agg = AgglomerativeClustering(n_clusters=num_clusters).fit(coords)
+        cluster_labels = agg.labels_
         gdf['cluster'] = cluster_labels
 
         # Display map
@@ -144,7 +159,7 @@ if st.session_state['clustering_done']:
     gdf.to_csv(csv_file, index=False)
 
     with open(csv_file, "rb") as f:
-        st.download_button("Download CSV", f, file_name="clustered_points.csv")
+        st.download_button("Download Clustered Results as CSV", f, file_name="clustered_points.csv")
 
     with open(zip_file, "rb") as f:
         st.download_button("Download All Cluster GeoJSONs as ZIP", f, file_name="clusters_geojson.zip")
