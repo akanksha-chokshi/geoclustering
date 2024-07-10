@@ -162,4 +162,4 @@ if st.session_state['clustering_done']:
         st.download_button("Download Clustered Results as CSV", f, file_name="clustered_points.csv")
 
     with open(zip_file, "rb") as f:
-        st.download_button("Download Folder with all Cluster GeoJSONs", f, file_name="clusters_geojson.zip")
+        st.download_button("Download All Cluster GeoJSONs as ZIP", f, file_name="clusters_geojson.zip")
