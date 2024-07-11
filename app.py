@@ -27,23 +27,16 @@ def simplify_geometries(gdf, tolerance=0.001):
     gdf['geometry'] = gdf['geometry'].simplify(tolerance, preserve_topology=True)
     return gdf
 
-# Function to save clusters to a zip file and ensure each file is less than 1 MB
-def save_clusters_to_zip(gdf, output_dir, max_size=1*1024*1024):
+# Function to save clusters to a zip file
+def save_clusters_to_zip(gdf, output_dir, simplify, tolerance=0.001):
     zip_filename = "clusters_geojson.zip"
     with zipfile.ZipFile(zip_filename, 'w') as zipf:
         for cluster_id in gdf['cluster'].unique():
             cluster_gdf = gdf[gdf['cluster'] == cluster_id]
-            simplified_gdf = simplify_geometries(cluster_gdf)
+            if simplify:
+                cluster_gdf = simplify_geometries(cluster_gdf, tolerance)
             output_file = os.path.join(output_dir, f'cluster_{cluster_id}.geojson')
-            simplified_gdf.drop(columns=['centroid', 'cluster']).to_file(output_file, driver='GeoJSON')
-
-            tolerance = 0.001
-            # Check file size and adjust if necessary
-            if os.path.getsize(output_file) > max_size:
-                tolerance *= 2
-                simplified_gdf = simplify_geometries(cluster_gdf, tolerance)
-                simplified_gdf.drop(columns=['centroid', 'cluster']).to_file(output_file, driver='GeoJSON')
-            
+            cluster_gdf.drop(columns=['centroid', 'cluster']).to_file(output_file, driver='GeoJSON')
             zipf.write(output_file, os.path.basename(output_file))
     return zip_filename
 
@@ -68,12 +61,19 @@ uploaded_file = st.file_uploader("Upload your GeoJSON file", type="geojson")
 
 if uploaded_file:
     gdf = gpd.read_file(uploaded_file)
+    
+    # Calculate file size in MB
+    file_size_mb = len(uploaded_file.getbuffer()) / (1024 * 1024)
+
+    # Determine the minimum and default number of clusters based on file size
+    min_clusters = max(2, int(file_size_mb) + 1)
+    default_clusters = min_clusters
 
     # Extract centroids
     gdf['centroid'] = gdf['geometry'].apply(extract_centroid)
     coords = gdf['centroid'].apply(lambda x: [x.x, x.y]).tolist()
 
-    start_clusters = st.number_input("Minimum Number of Clusters to Consider", min_value=2, max_value=50, value=2, step=1)
+    start_clusters = st.number_input("Minimum Number of Clusters to Consider", min_value=2, max_value=50, value=min_clusters, step=1)
     end_clusters = st.number_input("Maximum Number of Clusters to Consider", min_value=start_clusters, max_value=50, value=50, step=1)
 
     if st.button("Analyse Best Number of Clusters"):
@@ -148,18 +148,24 @@ if st.session_state['clustering_done']:
     m = st.session_state['map']
     folium_static(m)
     
-    output_dir = 'clusters_geojson'
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Save GeoJSON files for each cluster into a zip
-    zip_file = save_clusters_to_zip(gdf, output_dir)
-
-    # Download buttons
     csv_file = "clustered_points.csv"
     gdf.to_csv(csv_file, index=False)
 
     with open(csv_file, "rb") as f:
         st.download_button("Download Clustered Results as CSV", f, file_name="clustered_points.csv")
 
-    with open(zip_file, "rb") as f:
-        st.download_button("Download All Cluster GeoJSONs as ZIP", f, file_name="clusters_geojson.zip")
+    original_output_dir = 'original_clusters_geojson'
+    os.makedirs(original_output_dir, exist_ok=True)
+    original_zip_file = save_clusters_to_zip(gdf, original_output_dir, simplify=False)
+    
+    with open(original_zip_file, "rb") as f:
+        st.download_button("Download Original Cluster GeoJSONs as ZIP", f, file_name="original_clusters_geojson.zip")
+
+    simplified_output_dir = 'simplified_clusters_geojson'
+    os.makedirs(simplified_output_dir, exist_ok=True)
+    simplified_zip_file = save_clusters_to_zip(gdf, simplified_output_dir, simplify=True)
+
+    # Download buttons
+    
+    with open(simplified_zip_file, "rb") as f:
+        st.download_button("Download Simplified Cluster GeoJSONs as ZIP", f, file_name="simplified_clusters_geojson.zip")
