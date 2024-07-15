@@ -44,6 +44,8 @@ def save_clusters_to_zip(gdf, output_dir, simplify, tolerance=0.001):
 st.title("GeoJSON Clustering App")
 
 # Initialize session state keys
+if 'last_uploaded_file' not in st.session_state:
+    st.session_state['last_uploaded_file'] = None
 if 'silhouette_scores' not in st.session_state:
     st.session_state['silhouette_scores'] = None
 if 'optimal_clusters' not in st.session_state:
@@ -59,6 +61,13 @@ if 'clustering_done' not in st.session_state:
 
 uploaded_file = st.file_uploader("Upload your GeoJSON file", type="geojson")
 
+# Reset session state if a new file is uploaded
+if uploaded_file and (uploaded_file != st.session_state['last_uploaded_file']):
+    st.session_state.clear()
+    st.session_state['last_uploaded_file'] = uploaded_file
+    st.session_state['optimal_clusters'] = None
+    st.experimental_rerun()
+    
 if uploaded_file:
     gdf = gpd.read_file(uploaded_file)
     
@@ -106,9 +115,13 @@ if uploaded_file:
         st.session_state['optimal_clusters'] = optimal_clusters
         st.session_state['coords'] = coords
         st.session_state['gdf'] = gdf
+else:
+    st.session_state['optimal_clusters'] = None
+    st.session_state['clustering_done'] = None
 
 if st.session_state['optimal_clusters'] is not None:
     num_clusters = st.number_input("Number of Clusters", min_value=2, max_value=50, value=st.session_state['optimal_clusters'], step=1)
+    st.session_state['clustering_done'] = None
 
     if st.button("Perform Clustering"):
         coords = st.session_state['coords']
